@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: mendesstrom-live-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mendesstrom-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TEAM_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN
+        value: '*'
+databases:
+  - name: mendesstrom-db
+    plan: free

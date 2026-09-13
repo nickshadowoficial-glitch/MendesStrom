@@ -1,0 +1,16 @@
+package br.com.mendesstrom;
+import android.Manifest;import android.app.*;import android.os.*;import android.content.*;import android.content.pm.PackageManager;import android.net.Uri;import android.webkit.*;import android.widget.*;import android.view.*;
+public class MainActivity extends Activity{
+ WebView web; ValueCallback<Uri[]> fileCallback; static final int LOC=10,NOTIF=11;
+ @Override public void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_main);web=findViewById(R.id.webview);
+  getWindow().setStatusBarColor(android.graphics.Color.rgb(7,17,31));getWindow().setNavigationBarColor(android.graphics.Color.rgb(7,17,31));
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setGeolocationEnabled(true);s.setAllowFileAccess(true);s.setAllowContentAccess(true);
+  web.setWebViewClient(new WebViewClient());web.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> cb,FileChooserParams params){ Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("*/*"); i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,false); fileCallback=cb; try{startActivityForResult(i,12);return true;}catch(Exception e){fileCallback=null;return false;}} @Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback cb){if(hasLocation()){cb.invoke(origin,true,false);}else{requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOC);cb.invoke(origin,true,false);}}});
+  web.addJavascriptInterface(new Bridge(this),"Android");web.loadUrl("file:///android_asset/index.html");
+ }
+ boolean hasLocation(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
+ void askNotifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},NOTIF);else Toast.makeText(this,"Notificações já permitidas.",Toast.LENGTH_SHORT).show();}
+ static class Bridge{final MainActivity a;Bridge(MainActivity x){a=x;}@JavascriptInterface public void enableNotifications(){a.runOnUiThread(a::askNotifications);}@JavascriptInterface public void call(String n){try{a.startActivity(new Intent(Intent.ACTION_DIAL,Uri.parse("tel:"+n)));}catch(Exception ignored){}}@JavascriptInterface public void openUrl(String u){try{a.startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(u)));}catch(Exception ignored){}}@JavascriptInterface public void requestLocation(){if(!a.hasLocation())a.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},LOC);}}
+ @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode==12&&fileCallback!=null){Uri[] r=null;if(resultCode==RESULT_OK&&data!=null&&data.getData()!=null)r=new Uri[]{data.getData()};fileCallback.onReceiveValue(r);fileCallback=null;}}
+ @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
+}
